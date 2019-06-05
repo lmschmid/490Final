@@ -1,29 +1,12 @@
 import sys
 import os
-from pathlib import Path
 import shutil
-from keras.preprocessing.image import ImageDataGenerator
+from pathlib import Path
+import numpy as np
 
 
 if len(sys.argv) != 2:
     print("Usage: python PrepareData.py <labels_file>")
-
-
-def generateBreedMapping(labelsFile):
-    breedMap = {}
-
-    with open(labelsFile) as f:
-        for line in f:
-            if line.rstrip() != 0 and line.rstrip() != "id,breed":
-                id, breed = line.rstrip().split(
-                    ',')[0], line.rstrip().split(',')[1]
-
-                if not breed in breedMap:
-                    breedMap[breed] = [id]
-                else:
-                    breedMap[breed].append(id)
-
-    return breedMap
 
 
 def generateIDMapping(labelsFile):
@@ -38,7 +21,6 @@ def generateIDMapping(labelsFile):
                 idMap[id] = breed
 
     return idMap
-
 
 
 def makeBreedDirectories(idMap, source, dest):
@@ -57,6 +39,22 @@ def makeBreedDirectories(idMap, source, dest):
         shutil.copyfile(srcPath, destPath)
 
 
+def makeValidationDirectories():
+    for dirname in os.listdir('train'):
+        samples = np.asarray(os.listdir('train/'+dirname))
+        valSamples = np.random.choice(samples, len(samples)//4, replace=False)
+
+        if os.path.exists('validation/'+dirname):
+            shutil.rmtree('validation/'+dirname)
+        for sample in valSamples:
+            path = Path('validation/'+dirname)
+            path.mkdir(parents=True, exist_ok=True)
+
+            shutil.move('train/'+dirname+'/'+sample, 'validation/'+dirname+'/'+sample)
+
+
+
 idMap = generateIDMapping(sys.argv[1])
 
 makeBreedDirectories(idMap, 'data/train', 'train')
+makeValidationDirectories()
