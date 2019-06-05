@@ -50,8 +50,8 @@ def makeValidationDirectories():
             path = Path('validation/'+dirname)
             path.mkdir(parents=True, exist_ok=True)
 
-            shutil.move('train/'+dirname+'/'+sample, 'validation/'+dirname+'/'+sample)
-
+            shutil.move('train/'+dirname+'/'+sample,
+                        'validation/'+dirname+'/'+sample)
 
 
 idMap = generateIDMapping(sys.argv[1])
