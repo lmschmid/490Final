@@ -90,8 +90,8 @@ def main(existing_model_path=None):
         train_model(model, train_generator, val_generator, verbose=True)
         model.save("./Model.h5")
 
-    train_model(model, train_generator, val_generator, verbose=True)
-    
+    # train_model(model, train_generator, val_generator, verbose=True)
+
     test_model(model, test_generator)
 
 
