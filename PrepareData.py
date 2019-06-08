@@ -54,7 +54,22 @@ def makeValidationDirectories():
                         'validation/'+dirname+'/'+sample)
 
 
+def makeTestDirectory(source, dest):
+    if os.path.exists(dest):
+        shutil.rmtree(dest)
+
+    dest = dest + "/images"
+    path = Path(dest)
+    path.mkdir(parents=True, exist_ok=True)
+
+    for filename in os.listdir(source):
+        srcPath = source+"/"+filename
+        destPath = dest+"/"+filename
+        shutil.copyfile(srcPath, destPath)
+
+
 idMap = generateIDMapping(sys.argv[1])
 
 makeBreedDirectories(idMap, 'data/train', 'train')
 makeValidationDirectories()
+makeTestDirectory('data/test', 'test')
