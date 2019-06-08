@@ -78,7 +78,7 @@ def test_model(model, test_generator):
 def main(existing_model_path=None):
     train_dir_name = 'train/'
     val_dir_name = 'validation/'
-    test_dir_name = 'test/'
+    test_dir_name = 'data/test/'
 
     train_generator, val_generator, test_generator = get_generators(
         train_dir_name, val_dir_name, test_dir_name)
@@ -89,8 +89,6 @@ def main(existing_model_path=None):
         model = build_model()
         train_model(model, train_generator, val_generator, verbose=True)
         model.save("./Model.h5")
-
-    # train_model(model, train_generator, val_generator, verbose=True)
 
     test_model(model, test_generator)
 
