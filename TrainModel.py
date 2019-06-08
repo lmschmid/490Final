@@ -31,14 +31,12 @@ def get_generators(train_dir_name, val_dir_name):
 def build_model():
     convBase = InceptionV3(
         weights='imagenet', 
-        include_top=False, 
+        include_top=True, 
         input_shape=(299, 299, 3))
     convBase.trainable = False
 
     model = models.Sequential()
     model.add(convBase)
-    model.add(layers.Flatten())
-    model.add(layers.Dense(256, activation='relu'))
     model.add(layers.Dense(120, activation='softmax'))
 
     model.compile(optimizer='rmsprop',
@@ -72,7 +70,7 @@ def main():
 
     model = build_model()
 
-    train_model(model, train_generator, val_generator, verbose=True)
+    # train_model(model, train_generator, val_generator, verbose=True)
 
 
 main()
