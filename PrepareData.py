@@ -54,7 +54,14 @@ def makeValidationDirectories():
                         'validation/'+dirname+'/'+sample)
 
 
+def makeTestDirectory(testDir):
+    path = Path('topTest/test')
+    path.mkdir(parents=True, exist_ok=True)
+
+    shutil.move(testDir, 'topTest/test/')
+
 idMap = generateIDMapping(sys.argv[1])
 
 makeBreedDirectories(idMap, 'data/train', 'train')
 makeValidationDirectories()
+makeTestDirectory('data/test/')
