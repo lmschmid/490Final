@@ -68,9 +68,9 @@ def main():
     test_dir_name = 'test/'
 
     train_generator, val_generator = get_generators(
-        train_dir_name, val_dir_name, test_dir_name)
+        train_dir_name, val_dir_name)
 
-    model = build_model(include_top=True)
+    model = build_model()
 
     train_model(model, train_generator, val_generator, verbose=True)
 
