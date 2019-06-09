@@ -78,19 +78,18 @@ def classify_images(model, label_map, test_generator, verbose=False):
         verbose=True)
 
     labels = sorted(list(label_map.keys()))
-    predicted_labels = np.argmax(predictions, axis=1)
     
     with open("predictions.csv", 'w') as pred_file:
         pred_file.write('id,{}\n'.format(",".join(labels)))
         for index, prediction in enumerate(predictions):
             id = re.split("[./]", test_generator.filenames[index])[-2]
-            confidence_vals = ",".join(map(str, list(prediction)))
+            prediction_list = prediction.tolist()
+            confidence_vals = ",".join(map(str, prediction_list))
             pred_file.write("{},{}\n".format(id, confidence_vals))
 
             if verbose:
-                print("Image '{}' classified as a {}".format(
-                    id, 
-                    labels[predicted_labels[index]]))
+                max_val = labels[prediction_list.index(max(prediction_list))]
+                print("Image '{}' classified as a {}".format(id, max_val))
 
 
 def main(existing_model_path=None):
@@ -108,7 +107,7 @@ def main(existing_model_path=None):
         train_model(model, train_generator, val_generator, verbose=True)
         model.save("./Model.h5")
 
-    classify_images(
+    dataframe = classify_images(
         model, 
         train_generator.class_indices, 
         test_generator, 
