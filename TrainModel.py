@@ -26,11 +26,11 @@ def get_generators(train_dir_name, val_dir_name, test_dir_name):
         batch_size=32,
         class_mode="categorical")
     test_generator = test_data_gen.flow_from_directory(
-        test_dir_name,
+        val_dir_name,
         color_mode="rgb",
         target_size=(299, 299),
         batch_size=1,
-        class_mode=None,
+        class_mode="categorical",
         shuffle=False)
 
     for data_batch, labels_batch in train_generator:
@@ -107,7 +107,7 @@ def main(existing_model_path=None):
         train_model(model, train_generator, val_generator, verbose=True)
         model.save("./Model.h5")
 
-    dataframe = classify_images(
+    classify_images(
         model, 
         train_generator.class_indices, 
         test_generator, 
