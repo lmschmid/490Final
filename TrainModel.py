@@ -5,7 +5,7 @@ import pandas as pd
 from keras import layers
 from keras import models
 from keras import optimizers
-from keras.applications.inception_v3 import InceptionV3
+from keras.applications import ResNet50, InceptionV3, VGG16, VGG19
 from keras.preprocessing.image import ImageDataGenerator
 
 
@@ -41,6 +41,30 @@ def get_generators(train_dir_name, val_dir_name, test_dir_name):
         break
 
     return train_generator, val_generator, test_generator
+
+
+def get_pretrained_model_bases(input_shape):
+    inception_base = InceptionV3(
+        weights='imagenet', 
+        include_top=False, 
+        input_shape=input_shape)
+    res_net_base = ResNet50(
+        weights='imagenet',
+        include_top=False,
+        input_shape=input_shape)
+    vgg_16_base = VGG16(
+        weights='imagenet',
+        include_top=False,
+        input_shape=input_shape)
+    vgg_19_base = VGG19(
+        weights='imagenet',
+        include_top=False,
+        input_shape=input_shape)
+
+    inception_base.trainable, res_net_base.trainable, vgg_16_base.trainable, \
+        vgg_19_base.trainable = False, False, False, False
+
+    return [inception_base, res_net_base, vgg_16_base, vgg_19_base]
 
 
 def build_inception_model():
@@ -84,6 +108,52 @@ def build_custom_inception_model():
     return model
 
 
+def build_ensemble_model():
+    input1 = layers.Input((299, 299, 3))
+    input2 = layers.Input((299, 299, 3))
+    input3 = layers.Input((299, 299, 3))
+    input4 = layers.Input((299, 299, 3))
+
+    inception_base = InceptionV3(
+        weights='imagenet', 
+        include_top=False)(input1)
+    res_net_base = ResNet50(
+        weights='imagenet',
+        include_top=False)(input2)
+    vgg_16_base = VGG16(
+        weights='imagenet',
+        include_top=False)(input3)
+    vgg_19_base = VGG19(
+        weights='imagenet',
+        include_top=False)(input4)
+
+    inception_base.trainable, res_net_base.trainable, vgg_16_base.trainable, \
+        vgg_19_base.trainable = False, False, False, False
+
+    flatten1 = layers.Flatten()(inception_base)
+    flatten2 = layers.Flatten()(res_net_base)
+    flatten3 = layers.Flatten()(vgg_16_base)
+    flatten4 = layers.Flatten()(vgg_19_base)
+
+    flatten1.trainable, flatten2.trainable, flatten3.trainable, \
+        flatten4.trainable = False, False, False, False
+
+    last_layers = layers.concatenate([flatten1, flatten2, flatten3, flatten4])
+    last_layers = layers.Dense(256, activation='relu')(last_layers)
+    last_layers = layers.Dropout(0.5)(last_layers)
+    last_layers = layers.Dense(120, activation='softmax')(last_layers)
+
+    ensemble_model = models.Model(
+        inputs=[input1, input2, input3, input4], 
+        outputs=last_layers)
+    optimizer = optimizers.SGD(lr=0.001, momentum=0.09)
+    ensemble_model.compile(optimizer=optimizer,
+                loss='categorical_crossentropy',
+                metrics=['accuracy'])
+
+    return ensemble_model
+
+
 def train_model(
     model, 
     train_generator, 
@@ -98,6 +168,8 @@ def train_model(
         validation_data=val_generator,
         validation_steps=50,
         verbose=verbose)
+
+    return history
 
 
 def classify_images(model, label_map, test_generator, verbose=False):
@@ -123,6 +195,11 @@ def classify_images(model, label_map, test_generator, verbose=False):
                 print("Image '{}' classified as a {}".format(id, max_val))
 
 
+def ensemble_input_generator(generator):
+    for image, label in generator:
+        yield [image, image, image, image], label
+
+
 def main(existing_model_path=None):
     train_dir_name = 'train/'
     val_dir_name = 'validation/'
@@ -134,10 +211,12 @@ def main(existing_model_path=None):
     if existing_model_path is not None:
         model = models.load_model(existing_model_path)
     else:
-        model = build_custom_inception_model()
-        train_model(model, train_generator, val_generator, 
+        model = build_ensemble_model()
+        ensemble_train_generator = ensemble_input_generator(train_generator)
+        ensemble_val_generator = ensemble_input_generator(train_generator)
+        train_model(model, ensemble_train_generator, ensemble_val_generator, 
             epochs=100, verbose=True)
-        model.save("./CustomModel.h5")
+        model.save("./EnsembleModel.h5")
 
     classify_images(
         model, 
