@@ -42,7 +42,8 @@ def scale_img_values(channel_img):
     return channel_img
 
 
-def analyze_for_img(inception, activation_model, img_tensor, n_layers=294, imgs_per_row=16, n_activations=8):
+def analyze_for_img(inception, activation_model, img_tensor, n_layers=294,
+                    imgs_per_row=16, n_activations=8):
     activations = activation_model.predict(img_tensor)
 
     first_layer_activation = activations[0]
@@ -50,7 +51,11 @@ def analyze_for_img(inception, activation_model, img_tensor, n_layers=294, imgs_
 
     layer_names = [layer.name for layer in inception.layers[1:n_layers]]
 
-    for layer_name, activation in zip(layer_names[:n_activations], activations[:n_activations]):
+    for layer_name, activation in zip(layer_names[:n_activations],
+                                      activations[:n_activations]):
+        if 'batch_normalization' in layer_name:
+            continue
+
         # Channels in output
         n_channels = activation.shape[-1]
 
