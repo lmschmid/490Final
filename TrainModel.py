@@ -75,7 +75,7 @@ def classify_images(model, label_map, test_generator, verbose=False):
     predictions = model.predict_generator(
         test_generator,
         steps=steps,
-        verbose=True)
+        verbose=verbose)
 
     labels = sorted(list(label_map.keys()))
     
