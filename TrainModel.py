@@ -4,6 +4,7 @@ import numpy as np
 import pandas as pd
 from keras import layers
 from keras import models
+from keras import optimizers
 from keras.applications.inception_v3 import InceptionV3
 from keras.preprocessing.image import ImageDataGenerator
 
@@ -42,7 +43,7 @@ def get_generators(train_dir_name, val_dir_name, test_dir_name):
     return train_generator, val_generator, test_generator
 
 
-def build_model():
+def build_inception_model():
     convBase = InceptionV3(
         weights='imagenet', 
         include_top=True, 
@@ -60,11 +61,40 @@ def build_model():
     return model
 
 
-def train_model(model, train_generator, val_generator, verbose=False):
+def build_custom_inception_model():
+    convBase = InceptionV3(
+        weights='imagenet', 
+        include_top=False, 
+        input_shape=(299, 299, 3))
+    convBase.trainable = False
+
+    model = models.Sequential()
+    model.add(convBase)
+    model.add(layers.Flatten())
+    model.add(layers.Dropout(0.3))
+    model.add(layers.Dense(1024, activation='relu'))
+    model.add(layers.Dropout(0.5))
+    model.add(layers.Dense(120, activation='softmax'))
+
+    optimizer = optimizers.SGD(lr=0.001, momentum=0.09)
+    model.compile(optimizer=optimizer,
+                loss='categorical_crossentropy',
+                metrics=['accuracy'])
+
+    return model
+
+
+def train_model(
+    model, 
+    train_generator, 
+    val_generator, 
+    epochs=30, 
+    verbose=False
+):
     history = model.fit_generator(
         train_generator,
         steps_per_epoch=100,
-        epochs=30,
+        epochs=epochs,
         validation_data=val_generator,
         validation_steps=50,
         verbose=verbose)
@@ -104,9 +134,10 @@ def main(existing_model_path=None):
     if existing_model_path is not None:
         model = models.load_model(existing_model_path)
     else:
-        model = build_model()
-        train_model(model, train_generator, val_generator, verbose=True)
-        model.save("./Model.h5")
+        model = build_custom_inception_model()
+        train_model(model, train_generator, val_generator, 
+            epochs=100, verbose=True)
+        model.save("./CustomModel.h5")
 
     classify_images(
         model, 
