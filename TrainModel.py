@@ -1,6 +1,7 @@
 import sys
 import re
 import numpy as np
+import pandas as pd
 from keras import layers
 from keras import models
 from keras.applications.inception_v3 import InceptionV3
@@ -26,11 +27,11 @@ def get_generators(train_dir_name, val_dir_name, test_dir_name):
         batch_size=32,
         class_mode="categorical")
     test_generator = test_data_gen.flow_from_directory(
-        val_dir_name,
+        test_dir_name,
         color_mode="rgb",
         target_size=(299, 299),
         batch_size=1,
-        class_mode="categorical",
+        class_mode=None,
         shuffle=False)
 
     for data_batch, labels_batch in train_generator:
