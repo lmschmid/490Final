@@ -153,18 +153,12 @@ def build_ensemble_model():
     return ensemble_model
 
 
-def train_model(
-    model, 
-    train_generator, 
-    val_generator, 
-    epochs=30, 
-    verbose=False
-):
+def train_model(model, train_gen, val_gen, epochs=30, verbose=False):
     history = model.fit_generator(
-        train_generator,
+        train_gen,
         steps_per_epoch=100,
         epochs=epochs,
-        validation_data=val_generator,
+        validation_data=val_gen,
         validation_steps=50,
         verbose=verbose)
 
@@ -209,8 +203,13 @@ def main(existing_model_path=None, model_type=None):
 
     if existing_model_path is not None:
         model = models.load_model(existing_model_path)
-    elif model_type == "Inception":
+    elif model_type == "InceptionBase":
         model = build_inception_model()
+        train_model(model, train_generator, val_generator, 
+            epochs=30, verbose=True)
+        model.save("./InceptionBase.h5")
+    elif model_type == "Inception":
+        model = build_custom_inception_model()
         train_model(model, train_generator, val_generator, 
             epochs=50, verbose=True)
         model.save("./Inception.h5")
@@ -241,4 +240,4 @@ if "--type" in sys.argv:
 elif "--model" in sys.argv:
     main(model_type=None, existing_model_path=sys.argv[sys.argv.index("--model") + 1])
 else:
-    print("Usage: python3 TrainModel.py [--type <type (Inception, ResNet, Ensemble)> <output_model_name>] [--model <model_file_path> (Only if using a pretrained model)]")
+    print("Usage: python3 TrainModel.py [--type <type (InceptionBase, Inception, ResNet, Ensemble)> <output_model_name>] [--model <model_file_path>]")

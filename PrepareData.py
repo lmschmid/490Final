@@ -1,8 +1,8 @@
 import sys
 import os
 import shutil
-from pathlib import Path
 import numpy as np
+from pathlib import Path
 
 
 if len(sys.argv) != 2:
