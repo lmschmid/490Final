@@ -5,7 +5,6 @@ import pandas as pd
 from keras import layers
 from keras import models
 from keras import optimizers
-from tensorflow.python.keras import backend as K
 from keras.applications import ResNet50, InceptionV3, VGG16, VGG19
 from keras.preprocessing.image import ImageDataGenerator
 
@@ -86,7 +85,6 @@ def build_custom_inception_model():
 
 
 def build_custom_resnet_model():
-    K.set_learning_phase(0)
     convBase = ResNet50(
         weights='imagenet', 
         include_top=False, 
@@ -95,7 +93,6 @@ def build_custom_resnet_model():
 
     model = models.Sequential()
     model.add(convBase)
-    K.set_learning_phase(1)
     model.add(layers.Flatten())
     model.add(layers.Dropout(0.3))
     model.add(layers.Dense(768, activation='relu'))
@@ -193,7 +190,7 @@ def classify_images(model, label_map, test_generator, verbose=False):
 
 def ensemble_input_generator(generator):
     for image, label in generator:
-        yield [image, image], label
+        yield [image, image, image, image], label
 
 
 def main(existing_model_path=None, model_type=None):
