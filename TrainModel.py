@@ -43,30 +43,6 @@ def get_generators(train_dir_name, val_dir_name, test_dir_name):
     return train_generator, val_generator, test_generator
 
 
-def get_pretrained_model_bases(input_shape):
-    inception_base = InceptionV3(
-        weights='imagenet', 
-        include_top=False, 
-        input_shape=input_shape)
-    res_net_base = ResNet50(
-        weights='imagenet',
-        include_top=False,
-        input_shape=input_shape)
-    vgg_16_base = VGG16(
-        weights='imagenet',
-        include_top=False,
-        input_shape=input_shape)
-    vgg_19_base = VGG19(
-        weights='imagenet',
-        include_top=False,
-        input_shape=input_shape)
-
-    inception_base.trainable, res_net_base.trainable, vgg_16_base.trainable, \
-        vgg_19_base.trainable = False, False, False, False
-
-    return [inception_base, res_net_base, vgg_16_base, vgg_19_base]
-
-
 def build_inception_model():
     convBase = InceptionV3(
         weights='imagenet', 
@@ -96,7 +72,30 @@ def build_custom_inception_model():
     model.add(convBase)
     model.add(layers.Flatten())
     model.add(layers.Dropout(0.3))
-    model.add(layers.Dense(1024, activation='relu'))
+    model.add(layers.Dense(768, activation='relu'))
+    model.add(layers.Dropout(0.5))
+    model.add(layers.Dense(120, activation='softmax'))
+
+    optimizer = optimizers.SGD(lr=0.001, momentum=0.09)
+    model.compile(optimizer=optimizer,
+                loss='categorical_crossentropy',
+                metrics=['accuracy'])
+
+    return model
+
+
+def build_custom_resnet_model():
+    convBase = ResNet50(
+        weights='imagenet', 
+        include_top=False, 
+        input_shape=(299, 299, 3))
+    convBase.trainable = False
+
+    model = models.Sequential()
+    model.add(convBase)
+    model.add(layers.Flatten())
+    model.add(layers.Dropout(0.3))
+    model.add(layers.Dense(768, activation='relu'))
     model.add(layers.Dropout(0.5))
     model.add(layers.Dense(120, activation='softmax'))
 
@@ -138,13 +137,13 @@ def build_ensemble_model():
     flatten1.trainable, flatten2.trainable, flatten3.trainable, \
         flatten4.trainable = False, False, False, False
 
-    last_layers = layers.concatenate([flatten1, flatten2, flatten3, flatten4])
-    last_layers = layers.Dense(256, activation='relu')(last_layers)
+    last_layers = layers.concatenate([flatten1, flatten2])
+    last_layers = layers.Dense(128, activation='relu')(last_layers)
     last_layers = layers.Dropout(0.5)(last_layers)
     last_layers = layers.Dense(120, activation='softmax')(last_layers)
 
     ensemble_model = models.Model(
-        inputs=[input1, input2, input3, input4], 
+        inputs=[input1, input2], 
         outputs=last_layers)
     optimizer = optimizers.SGD(lr=0.001, momentum=0.09)
     ensemble_model.compile(optimizer=optimizer,
@@ -197,10 +196,10 @@ def classify_images(model, label_map, test_generator, verbose=False):
 
 def ensemble_input_generator(generator):
     for image, label in generator:
-        yield [image, image, image, image], label
+        yield [image, image], label
 
 
-def main(existing_model_path=None):
+def main(existing_model_path=None, model_type=None):
     train_dir_name = 'train/'
     val_dir_name = 'validation/'
     test_dir_name = 'test/'
@@ -210,13 +209,25 @@ def main(existing_model_path=None):
 
     if existing_model_path is not None:
         model = models.load_model(existing_model_path)
-    else:
+    elif model_type == "Inception":
+        model = build_inception_model()
+        train_model(model, train_generator, val_generator, 
+            epochs=50, verbose=True)
+        model.save("./Inception.h5")
+    elif model_type == "ResNet":
+        model = build_custom_resnet_model()
+        train_model(model, train_generator, val_generator, 
+            epochs=50, verbose=True)
+        model.save("./ResNet.h5")
+    elif model_type == "Ensemble":
         model = build_ensemble_model()
         ensemble_train_generator = ensemble_input_generator(train_generator)
         ensemble_val_generator = ensemble_input_generator(train_generator)
         train_model(model, ensemble_train_generator, ensemble_val_generator, 
             epochs=100, verbose=True)
-        model.save("./EnsembleModel.h5")
+        model.save("./Ensemble.h5")
+    else:
+        print("Error: {} is not a valid type".format(model_type))
 
     classify_images(
         model, 
@@ -225,7 +236,9 @@ def main(existing_model_path=None):
         verbose=True)
 
 
-if len(sys.argv) > 1:
-    main(sys.argv[1])
+if "--type" in sys.argv:
+    main(model_type=sys.argv[sys.argv.index("--type") + 1], existing_model_path=None)
+elif "--model" in sys.argv:
+    main(model_type=None, existing_model_path=sys.argv[sys.argv.index("--model") + 1])
 else:
-    main()
+    print("Usage: python3 TrainModel.py [--type <type (Inception, ResNet, Ensemble)> <output_model_name>] [--model <model_file_path> (Only if using a pretrained model)]")
