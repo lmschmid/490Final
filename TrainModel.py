@@ -5,11 +5,12 @@ import pandas as pd
 from keras import layers
 from keras import models
 from keras import optimizers
+from tensorflow.python.keras import backend as K
 from keras.applications import ResNet50, InceptionV3, VGG16, VGG19
 from keras.preprocessing.image import ImageDataGenerator
 
 
-def get_generators(train_dir_name, val_dir_name, test_dir_name):
+def get_generators(train_dir_name, val_dir_name, test_dir_name, target_size):
     # All images will be rescaled by 1./255
     train_data_gen = ImageDataGenerator(rescale=1./255)
     val_data_gen = ImageDataGenerator(rescale=1./255)
@@ -18,19 +19,19 @@ def get_generators(train_dir_name, val_dir_name, test_dir_name):
     train_generator = train_data_gen.flow_from_directory(
         train_dir_name,
         color_mode="rgb",
-        target_size=(299, 299),
+        target_size=target_size,
         batch_size=32,
         class_mode="categorical")
     val_generator = val_data_gen.flow_from_directory(
         val_dir_name,
         color_mode="rgb",
-        target_size=(299, 299),
+        target_size=target_size,
         batch_size=32,
         class_mode="categorical")
     test_generator = test_data_gen.flow_from_directory(
         test_dir_name,
         color_mode="rgb",
-        target_size=(299, 299),
+        target_size=target_size,
         batch_size=1,
         class_mode=None,
         shuffle=False)
@@ -85,14 +86,16 @@ def build_custom_inception_model():
 
 
 def build_custom_resnet_model():
+    K.set_learning_phase(0)
     convBase = ResNet50(
         weights='imagenet', 
         include_top=False, 
-        input_shape=(299, 299, 3))
+        input_shape=(224, 224, 3))
     convBase.trainable = False
 
     model = models.Sequential()
     model.add(convBase)
+    K.set_learning_phase(1)
     model.add(layers.Flatten())
     model.add(layers.Dropout(0.3))
     model.add(layers.Dense(768, activation='relu'))
@@ -198,33 +201,43 @@ def main(existing_model_path=None, model_type=None):
     val_dir_name = 'validation/'
     test_dir_name = 'test/'
 
-    train_generator, val_generator, test_generator = get_generators(
-            train_dir_name, val_dir_name, test_dir_name)
-
     if existing_model_path is not None:
         model = models.load_model(existing_model_path)
+
     elif model_type == "InceptionBase":
+        train_generator, val_generator, test_generator = get_generators(
+            train_dir_name, val_dir_name, test_dir_name, (299, 299))
         model = build_inception_model()
         train_model(model, train_generator, val_generator, 
             epochs=30, verbose=True)
         model.save("./InceptionBase.h5")
+
     elif model_type == "Inception":
+        train_generator, val_generator, test_generator = get_generators(
+            train_dir_name, val_dir_name, test_dir_name, (299, 299))
         model = build_custom_inception_model()
         train_model(model, train_generator, val_generator, 
             epochs=50, verbose=True)
         model.save("./Inception.h5")
+
     elif model_type == "ResNet":
+        train_generator, val_generator, test_generator = get_generators(
+            train_dir_name, val_dir_name, test_dir_name, (224, 224))
         model = build_custom_resnet_model()
         train_model(model, train_generator, val_generator, 
             epochs=50, verbose=True)
         model.save("./ResNet.h5")
+
     elif model_type == "Ensemble":
+        train_generator, val_generator, test_generator = get_generators(
+            train_dir_name, val_dir_name, test_dir_name, (299, 299))
         model = build_ensemble_model()
         ensemble_train_generator = ensemble_input_generator(train_generator)
         ensemble_val_generator = ensemble_input_generator(train_generator)
         train_model(model, ensemble_train_generator, ensemble_val_generator, 
             epochs=100, verbose=True)
         model.save("./Ensemble.h5")
+        
     else:
         print("Error: {} is not a valid type".format(model_type))
 
