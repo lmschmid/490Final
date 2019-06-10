@@ -174,9 +174,8 @@ def main(model_file):
     analyze_channels_for_img(inception, activation_model, img_tensor)
 
     # These two functions should work but do not currently
+    # layer_names = ['conv2d_1', 'conv2d_2', 'conv2d_3', 'conv2d_4', 'conv2d_5']
     # display_heatmap(inception, img_tensor)
-
-    layer_names = ['conv2d_1', 'conv2d_2', 'conv2d_3', 'conv2d_4', 'conv2d_5']
     # display_filters(inception, layer_names)
 
 
