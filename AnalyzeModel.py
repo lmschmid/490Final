@@ -85,43 +85,34 @@ def analyze_channels_for_img(inception, activation_model, img_tensor,
 
 
 # Credit: Chollet
-def analyze_layer_filter(inception, layer_name):
+def analyze_layer_filter(inception, layer_name, filter_index=0):
     layer_output = inception.get_layer(layer_name).output
-    num_filters = layer_output.shape[-1]
 
-    n_rows = 5
-    n_cols = num_filters // n_rows
-    display_grid = np.zeros((299 * n_cols, n_rows * 299, 3))
+    loss = backend.mean(layer_output[:, :, :, filter_index])
 
-    for filter_index in range(num_filters):
-        loss = backend.mean(layer_output[:, :, :, filter_index])
+    # The call to `gradients` returns a list of tensors (of size 1 in this case)
+    # hence we only keep the first element -- which is a tensor.
+    grads = backend.gradients(loss, inception.layers[0].input)[0]
+    # We add 1e-5 before dividing so as to avoid accidentally dividing by 0.
+    grads /= (backend.sqrt(backend.mean(backend.square(grads))) + 1e-5)
 
-        # The call to `gradients` returns a list of tensors (of size 1 in this case)
-        # hence we only keep the first element -- which is a tensor.
-        grads = backend.gradients(loss, inception.layers[0].input)[0]
-        # We add 1e-5 before dividing so as to avoid accidentally dividing by 0.
-        grads /= (backend.sqrt(backend.mean(backend.square(grads))) + 1e-5)
+    iterate = backend.function([inception.layers[0].input], [loss, grads])
 
-        iterate = backend.function([inception.layers[0].input], [loss, grads])
+    # Gray image with noise.
+    input_img_data = np.random.random((1, 299, 299, 3)) * 20 + 128.
 
-        # Gray image with noise.
-        input_img_data = np.random.random((1, 299, 299, 3)) * 20 + 128.
+    # Run gradient ascent for 40 steps
+    step = 1.  # this is the magnitude of each gradient update
+    for _ in range(40):
+        # Compute the loss value and gradient value
+        _, grads_value = iterate([input_img_data])
+        # Here we adjust the input image in the direction that maximizes the loss
+        input_img_data += grads_value * step
 
-        # Run gradient ascent for 40 steps
-        step = 1.  # this is the magnitude of each gradient update
-        for _ in range(40):
-            # Compute the loss value and gradient value
-            _, grads_value = iterate([input_img_data])
-            # Here we adjust the input image in the direction that maximizes the loss
-            input_img_data += grads_value * step
+    img = input_img_data[0]
 
-        img = input_img_data[0]
-        img = scale_img_values(img)
+    return  scale_img_values(img)
 
-        display_grid[filter_index%n_cols * 299: ((filter_index%n_cols) + 1) * 299,
-                     filter_index%n_rows * 299: ((filter_index%n_rows) + 1) * 299] =  img
-
-    return display_grid
 
 
 def analyze_filters(inception, layer_names):
