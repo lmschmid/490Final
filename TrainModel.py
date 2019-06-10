@@ -198,6 +198,9 @@ def main(existing_model_path=None, model_type=None):
     val_dir_name = 'validation/'
     test_dir_name = 'test/'
 
+    train_generator, val_generator, test_generator = get_generators(
+        train_dir_name, val_dir_name, test_dir_name, (299, 299))
+
     if existing_model_path is not None:
         model = models.load_model(existing_model_path)
 
