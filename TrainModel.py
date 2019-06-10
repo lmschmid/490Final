@@ -153,18 +153,12 @@ def build_ensemble_model():
     return ensemble_model
 
 
-def train_model(
-    model, 
-    train_generator, 
-    val_generator, 
-    epochs=30, 
-    verbose=False
-):
+def train_model(model, train_gen, val_gen, epochs=30, verbose=False):
     history = model.fit_generator(
-        train_generator,
+        train_gen,
         steps_per_epoch=100,
         epochs=epochs,
-        validation_data=val_generator,
+        validation_data=val_gen,
         validation_steps=50,
         verbose=verbose)
 
