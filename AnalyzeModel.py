@@ -105,10 +105,64 @@ def display_filters(model, layer_names):
     plt.show()
 
 
+def generate_prediction_images(model):
+    # Utility to search for layer index by name. 
+    # Alternatively we can specify this as -1 since it corresponds to the last layer.
+    layer_idx = utils.find_layer_idx(model, 'predictions')
+
+    # Swap softmax with linear
+    model.layers[layer_idx].activation = activations.linear
+    model = utils.apply_modifications(model)
+
+    plt.rcParams['figure.figsize'] = (18, 6)
+
+    # 20 is the imagenet category for 'ouzel'
+    img = visualize_activation(model, layer_idx, filter_indices=20)
+    print("Here")
+    print(img)
+    plt.imshow(img)
+    plt.show()
+
+
+def generate_filter_images(model):
+    selected_indices = []
+    for layer_name in ['conv2d_3', 'conv2d_5', 'conv2d_7', 'conv2d_9', 'conv2d_29']:
+        layer_idx = utils.find_layer_idx(model, layer_name)
+
+        # Visualize all filters in this layer.
+        filters = np.random.permutation(get_num_filters(model.layers[layer_idx]))[:10]
+        selected_indices.append(filters)
+
+        # Generate input image for each filter.
+        vis_images = []
+        for idx in filters:
+            img = visualize_activation(model, layer_idx, filter_indices=idx,
+                tv_weight=0.,
+                input_modifiers=[Jitter(0.05)])
+
+            # Utility to overlay text on image.
+            img = utils.draw_text(img, 'Filter {}'.format(idx))    
+            vis_images.append(img)
+
+        # Generate stitched image palette with 5 cols so we get 2 rows.
+        stitched = utils.stitch_images(vis_images, cols=5)    
+        plt.figure()
+        plt.axis('off')
+        plt.imshow(stitched)
+        plt.savefig(layer_name)
+
+
 # Assumes the first layer of inputted model is inception.
 def main(model_file):
-    model = models.load_model(model_file)
+    model = InceptionV3(
+        weights='imagenet',
+        include_top=True,
+        input_shape=(299, 299, 3)
+    )
 
+    generate_filter_images(model)
+
+    model = models.load_model(model_file)
     inception = model.layers[0]
 
     activation_model = get_activation_model(inception)
