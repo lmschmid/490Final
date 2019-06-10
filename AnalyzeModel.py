@@ -2,6 +2,8 @@ import sys
 from keras import models
 from keras.preprocessing import image
 from keras import backend
+from vis.visualization import visualize_activation,visualize_saliency,overlay,visualize_cam
+from vis.utils import utils
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -84,45 +86,23 @@ def analyze_channels_for_img(inception, activation_model, img_tensor,
     plt.show()
 
 
-# Credit: Chollet
-def analyze_layer_filter(inception, layer_name, filter_index=0):
-    layer_output = inception.get_layer(layer_name).output
+def display_heatmap(model, img):
+    layer_idx = utils.find_layer_idx(model, 'conv2d_15')
+    heatmap = visualize_cam(model, layer_idx, filter_indices=None, seed_input=img[0,:,:,:])
 
-    loss = backend.mean(layer_output[:, :, :, filter_index])
-
-    # The call to `gradients` returns a list of tensors (of size 1 in this case)
-    # hence we only keep the first element -- which is a tensor.
-    grads = backend.gradients(loss, inception.layers[0].input)[0]
-    # We add 1e-5 before dividing so as to avoid accidentally dividing by 0.
-    grads /= (backend.sqrt(backend.mean(backend.square(grads))) + 1e-5)
-
-    iterate = backend.function([inception.layers[0].input], [loss, grads])
-
-    # Gray image with noise.
-    input_img_data = np.random.random((1, 299, 299, 3)) * 20 + 128.
-
-    # Run gradient ascent for 40 steps
-    step = 1.  # this is the magnitude of each gradient update
-    for _ in range(40):
-        # Compute the loss value and gradient value
-        _, grads_value = iterate([input_img_data])
-        # Here we adjust the input image in the direction that maximizes the loss
-        input_img_data += grads_value * step
-
-    img = input_img_data[0]
-
-    return  scale_img_values(img)
+    img_init = utils.load_img(test_img_path,target_size=(299,299))
+    plt.imshow(overlay(img_init, heatmap))
+    plt.show()
 
 
+def display_filters(model, layer_names):
+    for layer_name in layer_names:
+        layer_idx = utils.find_layer_idx(model, layer_name)
 
-def analyze_filters(inception, layer_names):
-    for name in layer_names:        
-        grid = analyze_layer_filter(inception, name)
-        plt.title(name)
-        plt.grid(False)
-        plt.imshow(grid)
+        visu = visualize_activation(model, layer_idx, filter_indices=None)
+        plt.imshow(visu)
 
-        plt.show()
+    plt.show()
 
 
 # Assumes the first layer of inputted model is inception.
@@ -134,10 +114,14 @@ def main(model_file):
     activation_model = get_activation_model(inception)
     img_tensor = get_img_tensor(test_img_path)
 
-    # analyze_channels_for_img(inception, activation_model, img_tensor)
+    analyze_channels_for_img(inception, activation_model, img_tensor)
+
+    # These two functions should work but do not currently
+    # display_heatmap(inception, img_tensor)
 
     layer_names = ['conv2d_1', 'conv2d_2', 'conv2d_3', 'conv2d_4', 'conv2d_5']
-    analyze_filters(inception, layer_names)
+    # display_filters(inception, layer_names)
+
 
 
 if len(sys.argv) != 2:
