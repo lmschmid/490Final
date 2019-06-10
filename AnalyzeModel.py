@@ -3,6 +3,7 @@ from keras import models
 from keras.preprocessing import image
 from keras import backend
 from keras.applications import InceptionV3
+from keras import activations
 from vis.utils import utils
 from vis.visualization import get_num_filters
 from vis.input_modifiers import Jitter
