@@ -1,6 +1,7 @@
 import sys
 from keras import models
 from keras.preprocessing import image
+from keras import backend
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -42,8 +43,8 @@ def scale_img_values(channel_img):
     return channel_img
 
 
-def analyze_for_img(inception, activation_model, img_tensor, n_layers=294,
-                    imgs_per_row=16, n_activations=8):
+def analyze_channels_for_img(inception, activation_model, img_tensor,
+                             n_layers=294, imgs_per_row=16, n_activations=16):
     activations = activation_model.predict(img_tensor)
 
     first_layer_activation = activations[0]
@@ -83,6 +84,47 @@ def analyze_for_img(inception, activation_model, img_tensor, n_layers=294,
     plt.show()
 
 
+# Credit: Chollet
+def analyze_layer_filter(inception, layer_name, filter_index=0):
+    layer_output = inception.get_layer(layer_name).output
+
+    loss = backend.mean(layer_output[:, :, :, filter_index])
+
+    # The call to `gradients` returns a list of tensors (of size 1 in this case)
+    # hence we only keep the first element -- which is a tensor.
+    grads = backend.gradients(loss, inception.layers[0].input)[0]
+    # We add 1e-5 before dividing so as to avoid accidentally dividing by 0.
+    grads /= (backend.sqrt(backend.mean(backend.square(grads))) + 1e-5)
+
+    iterate = backend.function([inception.layers[0].input], [loss, grads])
+
+    # Gray image with noise.
+    input_img_data = np.random.random((1, 299, 299, 3)) * 20 + 128.
+
+    # Run gradient ascent for 40 steps
+    step = 1.  # this is the magnitude of each gradient update
+    for _ in range(40):
+        # Compute the loss value and gradient value
+        _, grads_value = iterate([input_img_data])
+        # Here we adjust the input image in the direction that maximizes the loss
+        input_img_data += grads_value * step
+
+    img = input_img_data[0]
+
+    return  scale_img_values(img)
+
+
+
+def analyze_filters(inception, layer_names):
+    for name in layer_names:        
+        grid = analyze_layer_filter(inception, name)
+        plt.title(name)
+        plt.grid(False)
+        plt.imshow(grid)
+
+        plt.show()
+
+
 # Assumes the first layer of inputted model is inception.
 def main(model_file):
     model = models.load_model(model_file)
@@ -92,7 +134,10 @@ def main(model_file):
     activation_model = get_activation_model(inception)
     img_tensor = get_img_tensor(test_img_path)
 
-    analyze_for_img(inception, activation_model, img_tensor)
+    # analyze_channels_for_img(inception, activation_model, img_tensor)
+
+    layer_names = ['conv2d_1', 'conv2d_2', 'conv2d_3', 'conv2d_4', 'conv2d_5']
+    analyze_filters(inception, layer_names)
 
 
 if len(sys.argv) != 2:
