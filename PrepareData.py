@@ -23,7 +23,7 @@ def generateIDMapping(labelsFile):
     return idMap
 
 
-def makeBreedDirectories(idMap, source, dest):
+def makeTrainDirectories(idMap, source, dest):
     if os.path.exists(dest):
         shutil.rmtree(dest)
 
@@ -70,6 +70,6 @@ def makeTestDirectory(source, dest):
 
 idMap = generateIDMapping(sys.argv[1])
 
-makeBreedDirectories(idMap, 'data/train', 'train')
+makeTrainDirectories(idMap, 'data/train', 'train')
 makeValidationDirectories()
 makeTestDirectory('data/test', 'test')
